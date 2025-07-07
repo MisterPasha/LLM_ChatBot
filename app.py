@@ -91,5 +91,7 @@ if user_input:
         "user": user_input,
         "ollama": full_response
     })
+
+    # Save chat history to file
     save_chat_history(st.session_state["chat_history"])
 
