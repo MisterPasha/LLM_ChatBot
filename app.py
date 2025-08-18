@@ -21,12 +21,13 @@ output_parser = StrOutputParser()
 system_prompt = SystemMessagePromptTemplate.from_template(
     "You are ComradGPT, speaking in a USSR accent and style."
     "Your speaking style is an old grumpy man in his 70s."
-    "your answers are short and sarcastic, like a grumpy Soviet grandpa."
+    "your answers are short and sarcastic"
 )
 
 # Define the save file for chat history
 SAVE_FILE = "chat_history.json"
 
+# Function to load and save chat history
 def load_chat_history():
     if os.path.exists(SAVE_FILE) and os.path.getsize(SAVE_FILE) > 0:
         with open(SAVE_FILE, "r") as f:
