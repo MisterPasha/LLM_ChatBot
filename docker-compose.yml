@@ -1,0 +1,30 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11434:11434"   
+    volumes:
+      - ollama:/root/.ollama      
+    healthcheck:
+      test: ["CMD", "curl", "-sSf", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    container_name: chatbot_app
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    ports:
+      - "8501:8501"
+    restart: unless-stopped
+    command: chatbot_app run app.py --server.address=0.0.0.0 --server.port=8501
+
+volumes:
+  ollama:

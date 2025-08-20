@@ -11,7 +11,7 @@ from langchain_core.messages import HumanMessage
 import os, json
 
 st.set_page_config(page_title="ComradGPT", layout="centered")
-st.markdown("<h1 style='text-align: center;'>🥸 ComradGPT</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>🥸 ComradeGPT</h1>", unsafe_allow_html=True)
 st.caption("Your Grumpy Soviet Grandpa — now available online!")
 
 # Load the Ollama model with streaming
