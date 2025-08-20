@@ -10,12 +10,15 @@ from langchain_core.prompts import (
 from langchain_core.messages import HumanMessage
 import os, json
 
+# Set the Ollama base URL from environment variable or default to local
+OLLAMA_BASE_URL = os.getenv("OLLAMA_HOST", "http://ollama:11434")
+
 st.set_page_config(page_title="ComradGPT", layout="centered")
 st.markdown("<h1 style='text-align: center;'>🥸 ComradeGPT</h1>", unsafe_allow_html=True)
 st.caption("Your Grumpy Soviet Grandpa — now available online!")
 
 # Load the Ollama model with streaming
-model = ChatOllama(model="llama3.2:1b", streaming=True)
+model = ChatOllama(model="llama3.2:1b", base_url=OLLAMA_BASE_URL, streaming=True)
 output_parser = StrOutputParser()
 
 system_prompt = SystemMessagePromptTemplate.from_template(
