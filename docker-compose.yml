@@ -6,7 +6,7 @@ services:
     volumes:
       - ollama:/root/.ollama      
     healthcheck:
-      test: ["CMD", "curl", "-sSf", "http://localhost:11434/api/tags"]
+      test: ["CMD", "ollama", "ps"]
       interval: 10s
       timeout: 5s
       retries: 5
