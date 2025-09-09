@@ -17,8 +17,12 @@ jobs:
       - name: Set image name
         id: meta_name
         run: |
-          REPO_LC="$misterpasha/llm_chatbot"
-          echo "IMAGE=ghcr.io/$misterpasha/llm_chatbot-app" >> $GITHUB_OUTPUT
+          OWNER="${{ github.repository_owner }}"
+          REPO="${{ github.event.repository.name }}"
+          OWNER_LC="${OWNER,,}"
+          REPO_LC="${REPO,,}"
+          echo "IMAGE=ghcr.io/${OWNER_LC}/${REPO_LC}-app" >> "$GITHUB_OUTPUT"
+          echo "Using image: ghcr.io/${OWNER_LC}/${REPO_LC}-app"
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -50,21 +54,21 @@ jobs:
           script: |
             set -e
             cd ~/app
-
-            # pull latest repo for updated compose files 
             git pull || true
 
-            REPO_LC="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
-            APP_IMAGE="ghcr.io/${REPO_LC}-app:${GITHUB_SHA}"
+            # login only if private (optional)
+            if [ -n "${GHCR_USER}" ] && [ -n "${GHCR_PAT}" ]; then
+              echo "${GHCR_PAT}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
+            fi
 
-            # pull + recreate only the app with the new image
+            OWNER="${{ github.repository_owner }}"
+            REPO="${{ github.event.repository.name }}"
+            OWNER_LC="${OWNER,,}"
+            REPO_LC="${REPO,,}"
+            APP_IMAGE="ghcr.io/${OWNER_LC}/${REPO_LC}-app:${GITHUB_SHA}"
+            echo "Deploying image: $APP_IMAGE"
+
             APP_IMAGE="$APP_IMAGE" docker compose -f docker-compose.prod.yml pull app || true
             APP_IMAGE="$APP_IMAGE" docker compose -f docker-compose.prod.yml up -d app
-
-            # seed/refresh the model (no-op if already present)
             docker compose -f docker-compose.prod.yml exec -T ollama ollama pull llama3.2:1b || true
-
             docker compose -f docker-compose.prod.yml ps
-        env:
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_SHA: ${{ github.sha }}
