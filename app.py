@@ -11,7 +11,7 @@ from langchain_core.messages import HumanMessage
 import os, json
 
 # Set the Ollama base URL from environment variable or default to local
-OLLAMA_BASE_URL = os.getenv("OLLAMA_HOST", "http://ollama:11434")
+OLLAMA_BASE_URL = os.getenv("OLLAMA_HOST", "http://ollama:11434") 
 
 st.set_page_config(page_title="ComradGPT", layout="centered")
 st.markdown("<h1 style='text-align: center;'>🥸 ComradeGPT</h1>", unsafe_allow_html=True)

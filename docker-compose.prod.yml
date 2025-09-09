@@ -1,0 +1,26 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "ps"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  app:
+    image: ${APP_IMAGE:-ghcr.io/misterpasha/llm_chatbot-app:latest}   # <-- set by CI
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+    ports:
+      - "8501:8501"
+    restart: unless-stopped
+    command: streamlit run app.py --server.address=0.0.0.0 --server.port=8501
+
+volumes:
+  ollama:
