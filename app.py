@@ -13,18 +13,19 @@ import os, json
 # Set the Ollama base URL from environment variable or default to local
 OLLAMA_BASE_URL = os.getenv("OLLAMA_HOST", "http://ollama:11434") 
 
-st.set_page_config(page_title="ComradGPT", layout="centered")
-st.markdown("<h1 style='text-align: center;'>🥸 ComradeGPT</h1>", unsafe_allow_html=True)
-st.caption("Your Grumpy Soviet Grandpa — now available online!")
+st.set_page_config(page_title="Customer Support Knowledge Agent", layout="centered")
+st.markdown("<h1 style='text-align: center;'>⚙️DigiSoft⚙️</h1>", unsafe_allow_html=True)
+st.caption("Chat with our virtual assistant about our products, services, policies, and procedures.")
 
 # Load the Ollama model with streaming
 model = ChatOllama(model="llama3.2:1b", base_url=OLLAMA_BASE_URL, streaming=True)
 output_parser = StrOutputParser()
 
 system_prompt = SystemMessagePromptTemplate.from_template(
-    "You are ComradGPT, speaking in a USSR accent and style."
-    "Your speaking style is an old grumpy man in his 70s."
-    "your answers are short and sarcastic"
+    "You are a customer support agent for a software company called DigiSoft."
+    "Your speaking style is friendly and professional."
+    "your answers are short and concise."
+    "You provide accurate information about the company's products, services, policies, and procedures."
 )
 
 # Define the save file for chat history
@@ -51,12 +52,12 @@ if "chat_history" not in st.session_state:
 # Chat input form
 with st.container():
     for chat in st.session_state["chat_history"]:
-        with st.chat_message("user", avatar="👽"):
+        with st.chat_message("user", avatar="🥸"):
             st.markdown(chat["user"])
-        with st.chat_message("ollama", avatar="🥸"):
+        with st.chat_message("ollama", avatar="⚙️"):
             st.markdown(chat["ollama"])
 
-user_input = st.chat_input("Talk to good old ComradGPT here...")
+user_input = st.chat_input("Type here to ask me anything...")
 
 # Streaming response handler
 def stream_response(chat_history):
@@ -74,14 +75,14 @@ def get_chat_history():
 
 # Handle user input
 if user_input:
-    st.chat_message("user", avatar="👽").markdown(user_input)
+    st.chat_message("user", avatar="🥸").markdown(user_input)
 
     # Prepare prompt
     prompt = HumanMessagePromptTemplate.from_template(user_input)
     history = get_chat_history()
     history.append(prompt)
 
-    with st.chat_message("ollama", avatar="🥸"):
+    with st.chat_message("ollama", avatar="⚙️"):
         full_response = ""
         response_container = st.empty()
 
