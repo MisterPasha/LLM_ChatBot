@@ -2,3 +2,10 @@ streamlit
 langchain
 langchain-core
 langchain-ollama
+langchain-community
+faiss-cpu
+langchain-huggingface
+pymupdf
+tiktoken
+langchain-ollama
+python-dotenv
