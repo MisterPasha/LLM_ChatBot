@@ -7,7 +7,7 @@ from langchain_core.prompts import (
     AIMessagePromptTemplate,
     ChatPromptTemplate,
 )
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 import os, json
 import warnings
 from dotenv import load_dotenv
@@ -22,6 +22,8 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
+from operator import itemgetter
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
 
 # Suppress specific warnings
@@ -50,17 +52,22 @@ for pdf in pdfs:
 # Split documents into chunks
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
 chunks = text_splitter.split_documents(docs)
-print(len(docs), len(chunks))
+
+# Ollama base URL from environment variable (http://ollama:11434) 
+# or default to localhost (http://localhost:11434)
+OLLAMA_BASE_URL = os.getenv("OLLAMA_HOST", "http://ollama:11434") 
 
 # Create embeddings and vector store
-embeddings = OllamaEmbeddings(model='nomic-embed-text', base_url="http://localhost:11434")
+embeddings = OllamaEmbeddings(model='nomic-embed-text', base_url=OLLAMA_BASE_URL)
 index = faiss.IndexFlatL2(768)  # Dimension for 'nomic-embed-text' is 768
-vector_store = FAISS(
-    embedding_function=embeddings,
-    index=index,
-    docstore=InMemoryDocstore(),
-    index_to_docstore_id={}
-)
+#vector_store = FAISS(
+#    embedding_function=embeddings,
+#    index=index,
+#    docstore=InMemoryDocstore(),
+#    index_to_docstore_id={}
+#)
+
+vector_store = FAISS.from_documents(chunks, embeddings)
 
 # Add documents to the vector store
 ids = vector_store.add_documents(documents=chunks)
@@ -68,27 +75,19 @@ ids = vector_store.add_documents(documents=chunks)
 # Add documents to the vector store
 retriever = vector_store.as_retriever(search_type="mmr", search_kwargs = {'k': 3, 
                                                                           'fetch_k': 100,
-                                                                          'lambda_mult': 1})
-
-# Ollama base URL from environment variable (http://ollama:11434) 
-# or default to localhost (http://localhost:11434)
-OLLAMA_BASE_URL = os.getenv("OLLAMA_HOST", "http://localhost:11434") 
+                                                                          'lambda_mult': 0.5})
 
 # Load the RAG  prompt from LangChain Hub
 # prompt = hub.pull("rlm/rag-prompt")
 
 # Custom prompt for customer support
-PROMPT = """
-    You are an assistant for question-answering tasks. 
-    Use the following pieces of retrieved context to answer the question.
-    If you don't know the answer, just say that you don't know.
-    Answer in bullet points. Make sure your answer is relevant to the question 
-    and it is answered from the context only.
-    Question: {question} 
-    Context: {context} 
-    Answer:
-"""
-prompt = ChatPromptTemplate.from_template(PROMPT)
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are DigiSoft support. Be concise and use ONLY the provided context. "
+               "If you don't know, say you don't know."),
+    MessagesPlaceholder("history"),  # <-- conversation so far
+    ("human", "Question: {question}\n\nContext:\n{context}\n\n"
+              "Answer in bullet points.")
+])
 
 st.set_page_config(page_title="Customer Support Knowledge Agent", layout="centered")
 st.markdown("<h1 style='text-align: center;'>⚙️DigiSoft⚙️</h1>", unsafe_allow_html=True)
@@ -97,13 +96,6 @@ st.caption("Chat with our virtual assistant about our products, services, polici
 # Load the Ollama model with streaming
 model = ChatOllama(model="llama3.2:1b", base_url=OLLAMA_BASE_URL, streaming=True)
 output_parser = StrOutputParser()
-
-system_prompt = SystemMessagePromptTemplate.from_template(
-    "You are a customer support agent for a software company called DigiSoft."
-    "Your speaking style is friendly and professional."
-    "your answers are short and concise."
-    "You provide accurate information about the company's products, services, policies, and procedures."
-)
 
 # Define the save file for chat history
 SAVE_FILE = "chat_history.json"
@@ -140,41 +132,55 @@ with st.container():
 user_input = st.chat_input("Type here to ask me anything...")
 
 # Streaming response handler
-def stream_response(chat_history):
-    chat_template = ChatPromptTemplate.from_messages(chat_history)
+def stream_response(question: str, history_msgs):
     #chain = chat_template | model | output_parser
     #response_stream = chain.stream({})  # streaming
+    #rag_chain = (
+    #    {"context": retriever|format_docs, "question": RunnablePassthrough()}
+    #    | prompt
+    #    | model
+    #    | output_parser
+    #    )
     rag_chain = (
-        {"context": retriever|format_docs, "question": RunnablePassthrough()}
-        | chat_template
+        {
+        "context": itemgetter("question") | retriever | format_docs,
+        "question": itemgetter("question"),
+        "history": itemgetter("history"),
+        }
         | prompt
         | model
         | output_parser
-        )
-    response_stream = rag_chain.stream(user_input)
-    return response_stream
+    )
+    return rag_chain.stream({"question": question, "history": history_msgs})
 
 def get_chat_history():
-    chat_history = [system_prompt]
+    chat_history = []
     for chat in st.session_state["chat_history"]:
         chat_history.append(HumanMessagePromptTemplate.from_template(chat["user"]))
         chat_history.append(AIMessagePromptTemplate.from_template(chat["ollama"]))
     return chat_history
+
+def get_history_messages():
+    msgs = []
+    for chat in st.session_state["chat_history"]:
+        msgs.append(HumanMessage(content=chat["user"]))
+        msgs.append(AIMessage(content=chat["ollama"]))
+    return msgs
 
 # Handle user input
 if user_input:
     st.chat_message("user", avatar="🥸").markdown(user_input)
 
     # Prepare prompt
-    prompt = HumanMessagePromptTemplate.from_template(user_input)
-    history = get_chat_history()
-    history.append(prompt)
+    msg_template = HumanMessagePromptTemplate.from_template(user_input)
+    #history = get_chat_history()
+    history = get_history_messages()
 
     with st.chat_message("ollama", avatar="⚙️"):
         full_response = ""
         response_container = st.empty()
 
-        for token in stream_response(history):
+        for token in stream_response(user_input, history):
             full_response += token
             response_container.markdown(full_response + "▌")  # Blinking cursor effect
 
